@@ -1,0 +1,14 @@
+#! /usr/bin/bash
+
+#echo "Here are the tables in $dbName"
+#ls $HOME/DBMS/$dbName/
+
+
+
+if [[ `ls | wc -l` -eq 0 ]]; then
+        echo "There Are No tables Created YET"
+    else
+        # 11- List available tables
+        echo "Available tables:"
+        ls $HOME/DBMS/$dbName/
+    fi

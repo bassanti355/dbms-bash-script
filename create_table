@@ -1,0 +1,131 @@
+#!/usr/bin/bash
+
+# Validate strings (only chars and _ )
+validate_str() {
+  if [[ "$1" =~ ^[a-zA-Z0-9_]+$ ]]; then
+    return 0 # Valid
+  else
+    return 1 # Invalid
+  fi
+}
+
+# Validate integers (numeric only)
+validate_int() {
+  if [[ "$1" =~ ^[0-9]+$ ]]; then
+    return 0 # Valid
+  else
+    return 1 # Invalid
+  fi
+}
+
+##################################################################
+
+read -p "Enter the name of the table you want to create: " tname
+validate_str "$tname"
+if [[ $? -ne 0 ]]; then
+  echo "Invalid table name. Only alphanumeric characters and underscores are allowed."
+else
+  table=${tname,,} # Convert to lowercase for uniformity
+  if [ -e ~/DBMS/$dbName/$table ]; then
+    echo "$table already exists."
+  else
+    touch ~/DBMS/$dbName/$table ~/DBMS/$dbName/.meta$table
+    echo "$table has been created successfully."
+    
+    ###################### Creating columns ######################
+    read -p "How many columns do you want to create? " colnum
+    validate_int "$colnum"
+    if [[ $? -ne 0 ]]; then
+      echo "Invalid input. Please enter a valid number for the number of columns."
+    else
+      ###################### Check if number of columns = 0 ######################
+      if [[ $colnum -eq 0 ]]; then
+        echo "You can't create 0 columns. Returning to menu."
+      else
+        ##################### Adding primary key #####################
+        valid=1
+        line=""
+        cols=""
+        metadata_valid=true # flag to check if metadata should be written
+
+        # Enter first column (Primary Key)
+        read -p "Enter the name of the first column **This will be the primary key**: " colname
+        validate_str "$colname"
+        if [[ $? -ne 0 ]]; then
+          echo "Invalid column name. Only alphanumeric characters and underscores are allowed."
+          metadata_valid=false # set to false if validation fails
+        else
+          line+=$colname
+          cols+=$colname
+          echo "Enter the type of the primary key $colname: "
+          select coltype in num str; do
+            case $coltype in
+              "num")
+                line+=":num"
+                break
+                ;;
+              "str")
+                line+=":str"
+                break
+                ;;
+              *)
+                echo "Invalid type. Please select either a num or a str."
+                ;;
+            esac
+          done
+          line+=":PK"
+        fi
+
+        ##################### Adding the rest of the columns #####################
+        for ((i = 2; i <= $colnum; i++)); do
+          # Enter column name and validate
+          read -p "Enter the name of column $i: " colname
+          validate_str "$colname"
+          if [[ $? -ne 0 ]]; then
+            echo "Invalid column name. Only alphanumeric characters and underscores are allowed."
+            metadata_valid=false # set to false if validation fails
+          else
+            line+=$colname
+            cols+=":$colname"
+            echo "Enter the type of column $colname: "
+            select coltype in num str; do
+              case $coltype in
+                "num")
+                  line+=":num"
+                  break
+                  ;;
+                "str")
+                  line+=":str"
+                  break
+                  ;;
+                *)
+                  echo "Invalid type. Please select either a num or a str."
+                  ;;
+              esac
+            done
+          fi
+
+          # Only add to metadata if all columns validated successfully
+          if [[ $metadata_valid == true ]]; then
+            echo $line >> ~/DBMS/$dbName/.meta$table
+            echo "Added column $colname to metadata."
+            line=""
+          else
+            echo "Column $i creation skipped due to invalid input."
+            break # Exit the loop if any column is invalid
+          fi
+        done
+
+        ##################### Finalize Table #####################
+        if [[ $metadata_valid == true ]]; then
+          # Write the column names to the table file if everything was valid
+          echo $cols >> ~/DBMS/$dbName/$table
+          echo "$colnum columns have been added successfully."
+        else
+          echo "Column creation aborted due to invalid input."
+        fi
+      fi
+    fi
+  fi
+fi
+

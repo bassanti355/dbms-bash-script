@@ -1,0 +1,62 @@
+#! /usr/bin/bash
+
+#### 1- Lists all files (tables) in the database directory to make user choose ######
+echo "Here are the available tables in $dbName"
+ls ~/DBMS/$dbName/
+
+####2- Ask for the table name and check if it exists
+read -p "Enter the name of the table you chose to update: " tName
+
+### 3- Create variables to hold paths of table and metadata
+meta_path=".meta$tName"
+table_path=~/DBMS/$dbName/$tName
+
+### 4- Check if the table exists
+if [ -e "$table_path" ]; then
+    PS3="Please choose an option from the menu: "
+    
+###5- LIST TO MAKE USER CHOOSE THE METHOD OF DELETION
+    select option in "Delete using PK" "EXIST TO MAIN MENU"; do
+        case $option in
+        
+            "Delete using PK")
+                
+### 6- READ THE PRIMARY KEY TO DELETE
+                read -p "Enter the primary key (ID) of the row to delete: " pk
+
+### 7- FIND THE ROW NUMBER BY PRIMARY KEY
+                row_number=$(awk -v pk="$pk" -F: '$1 == pk {print NR}' "$table_path")
+
+                ## AWK will search line by line for `$pk` in the first field. If found, it will print the line number (NR).
+                ## We store the line number in `row_number`.
+
+### 8- CHECK IF THE ROW EXISTS
+                if [[ -z $row_number ]]; then
+                    echo "Row with primary key '$pk' not found."
+                    break
+                fi
+
+### 9- DELETE THE ROW
+                awk -v row="$row_number" 'NR != row { print $0 }' "$table_path" > tmp && mv tmp "$table_path"
+
+                ### AWK skips the row corresponding to `row_number` and writes all other rows to a temporary file `tmp`.
+                ### We replace the original table file with the temporary file.
+
+                echo "Row deleted successfully."
+                break
+                ;;
+
+            "EXIST TO MAIN MENU ")
+                break 
+                ;;
+
+            *)
+                echo "Invalid option. Please try again."
+                ;;
+        esac
+        break
+    done
+else
+    echo "Table $tName does not exist."
+fi
+

@@ -1,0 +1,210 @@
+#! /bin/bash 
+
+##############################################
+# Functions for input validation
+##############################################
+
+# 1- Function to validate integers
+validate_int() {
+  if [[ "$1" =~ ^[0-9]+$ ]]; then
+    return 0 # Valid
+  else
+    return 1 # Invalid
+  fi
+}
+
+# 2- Function to validate strings
+validate_str() {
+    if [[ "$1" =~ ^[a-zA-Z0-9_]+$ ]]; then
+        # String must only contain letters, numbers, or underscores
+        return 0 # Valid
+    else
+        return 1 # Invalid
+    fi
+}
+
+##############################################################################
+
+# 3- Check if DBMS directory exists, if not create it
+if [ -d ~/DBMS ]
+then
+    cd ~/DBMS
+    echo "DBMS is ready"
+else 
+    mkdir ~/DBMS
+    cd ~/DBMS
+    echo "DBMS is ready"
+fi
+
+# 4- Welcome message
+echo ------------------------Welcome `whoami`---------------------
+
+PS3="This is the main menu, Choose [1-5]: " 
+
+# 5- Main menu to choose operations on the database
+select option in "Create Database" "List Database" "Connect Database" "Drop Database" "Exit"
+do
+    case $option in
+
+##############################################
+# Create Database Section
+##############################################
+
+"Create Database")
+    # 6- Ask the user for the database name
+    read -p "Please Enter Database Name: " dname
+       dbName=${dname,,}
+    
+    # 7- Validate the database name
+    if ! validate_str "$dbName" ;then
+        echo "Invalid name, database name must not contain special characters, empty spaces, or numbers: $dbName" 
+    elif [ -e "$dbName" ]; then
+        # 8- Check if the database already exists
+        echo "Database '$dbName' already exists."
+    else 
+        # 9- Create the database directory if validation passes
+        mkdir "$dbName"    
+        echo "Database '$dbName' is created successfully :)"
+    fi
+    ;;
+
+##############################################
+# List Databases Section
+##############################################
+
+"List Database")
+    # 10- Check if there are any databases
+    if [[ `ls | wc -l` -eq 0 ]]; then
+        echo "There Are No Databases Created YET"
+    else
+        # 11- List available databases
+        echo "Available Databases:"
+        ls -F | grep / | sed 's|/$||'
+    fi
+    ;;
+
+##############################################
+# Connect to a Database Section
+##############################################
+
+"Connect Database")
+    # 12- Ask the user for the database name to connect
+    read -p "Enter the name of the database to connect: " dname
+   dbName=${dname,,}
+    
+    if [[ -d "$dbName" ]]; then
+        # 13- Change directory to the database
+        cd "$dbName" || { echo "Failed to connect to $dbName."; continue; }
+        echo "------------------------Connected To $dbName Database------------------------"
+        
+        # 14- Database-level menu
+       	PS3="You are inside DB $dbName, Choose [1-8]: "
+
+        select input in "Create Table" "Drop Table" "Insert Table" "Select From Table" "Delete From Table" "Update Table" "List Tables" "Disconnect"; do
+            case $REPLY in
+            1) 
+                # 15- Call external script for creating tables
+                . create_table
+                ;; 
+            2)
+                # 16- Call external script for dropping tables
+                . Drop_table
+                ;;
+            3)
+                # 17- Call external script for inserting data into tables
+                . insert_into
+                ;;
+            4)
+                . select_table
+                
+                ;;
+            5)
+                # 18- Call external script for deleting rows from tables
+                . delete_table
+                ;;
+            6)
+                # 19- Call external script for updating rows in tables
+                . update_table
+                ;;
+            7)
+                # 20- Call external script for listing tables
+                . list_table
+                ;;
+            8)
+                # 21- Disconnect from the database
+                echo "Disconnecting from database $dbName."
+                cd ..
+                PS3="Please choose an option from the menu: "
+                break
+                ;;
+            *)
+                # 22- Invalid input handling
+                echo "Wrong input. Please enter a valid option."
+               
+                
+            
+                ;;
+            esac
+        done
+    else
+        # 23- If database doesn't exist, print error message
+        echo "No database found with the name '$dbName'. Please enter the exact name."
+    fi
+    ;;
+
+##############################################
+# Drop a Database Section
+##############################################
+
+
+    # 24- Ask the user for the database name to drop
+
+
+"Drop Database" )
+    # Ask the user for the database name to drop
+    read -p "Enter the name of the database you want to drop: " dname
+    
+    # Validate the database name
+    if ! validate_str "$dname"; then
+        echo "Invalid name. Database names must only contain letters, numbers, or underscores: $dname"
+    else
+        dbName=${dname,,}  # Convert to lowercase for consistency
+        if [ -e "$dbName" ]; then
+                           # Confirm deletion with user
+            read -p "Are you sure you want to drop $dbName? yes/no: " answer
+            if [[ $answer =~ ^yes$ ]]; then
+                rm -r "$dbName"
+                echo "Database '$dbName' has been dropped."
+            elif [[ $answer =~ ^no$ ]]; then
+                echo "Great choice! Always think twice before dropping a database."
+            else
+                echo "Unrecognized input. Try again."
+            fi
+        else
+            echo "Database '$dbName' does not exist."
+        fi
+    fi
+    ;;
+
+# Exit Program Section
+##############################################
+
+"Exit")
+    # 28- Exit the program with a goodbye message
+    echo "Exiting the program. Goodbye!"
+    PS3="This is the main menu, Choose [1-5]: " 
+    break         
+    ;;
+
+##############################################
+# Invalid Option Handling
+##############################################
+
+*)
+    # 29- Handle invalid input for the main menu
+    echo "WRONG OPTION, PLEASE TRY AGAIN."
+
+    ;;
+    esac
+done
+

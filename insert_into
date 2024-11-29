@@ -1,0 +1,135 @@
+#! /usr/bin/bash
+
+read -p "Enter the table you want to insert into: " tname
+	if [[ -z $tname ]] #1 if
+	then
+		echo "Error: Table name must be a non-empty string!"
+		
+	else
+		
+		table=${tname,,}
+		if [ -e $table ] # 2 if
+		then
+			
+			# check if .meta file exists
+			if [[ ! -f ".meta$table" ]] # 3 if
+			then 
+				echo "Error: metadata file .meta$table not found!"
+				break
+			fi # 3 if
+			
+			# inserting metadata file lines into an array called columns
+			mapfile -t columns < ".meta$table"
+			
+			
+			# looping to take user's input for every column
+			col_num=$(wc -l .meta$table | cut -d" " -f1)
+			declare -a values
+			
+			for ((i=0;i<$col_num;i++))
+			do 
+				col_name=$(echo ${columns[$i]} | cut -d: -f1)
+				col_type=$(echo ${columns[$i]} | cut -d: -f2)
+				
+				read -p "Enter value for $col_name($col_type): " values[$i]
+				
+				
+			done
+			
+			line=""
+			valid_row=1
+			# validation primary key insertion
+			
+			col_name=$(echo ${columns[0]} | cut -d: -f1)
+			col_type=$(echo ${columns[0]} | cut -d: -f2)
+			validpk=$(grep -E "^${values[0]}" "$table" | cut -d: -f1)
+			
+			# check if there's a row starts with the first value entered (in pk col)
+			
+			if [[ -z $validpk ]] # 4 if
+			then 
+				# if we found nothing >> continue chacking the column type
+				if [[ $col_type = "num" ]] # 5 if
+				then
+					if ! [[ ${values[0]} =~ ^[0-9]+$ ]] # 6 if
+					then
+						echo "Error: column $col_name type is $col_type! You must enter a unique numeric value"
+						valid_row=0
+					
+					else
+						line+=${values[0]}
+
+					fi # 6 if
+				elif [[ $col_type = "str" ]] # 5 if
+				then
+					if [[ -z ${values[0]} ]] #7  if
+					then
+						echo  "Error: You should enter a non-empty unique value for column $col_name(PK)"
+						valid_row=0
+						
+					else
+						line+=${values[0]}
+					fi # 7 if
+						
+				fi #5 if
+			elif [[ -z ${values[0]} ]]
+					then
+						echo "Error: You should enter a non-empty unique value for column $col_name(PK)"
+						valid_row=0
+			# if we found duplicate
+			else
+				echo "${values[0]} already exists in $col_name, voilating primary key constraint!"
+				valid_row=0
+				 
+			fi # 4 if
+			
+			# looping over each of one of the columns except the PK
+			for ((i=1;i<$col_num;i++))
+			do 
+				col_name=$(echo ${columns[$i]} | cut -d: -f1)
+				col_type=$(echo ${columns[$i]}  | cut -d: -f2)
+				
+				
+				if [[ $col_type = "num" ]] # 8 if
+				then
+					if [[ -z ${values[$i]} ]] # 9 if
+					then
+						echo "Error: You should enter a non-empty value for column $col_name"
+						valid_row=0
+						
+					elif ! [[ ${values[$i]} =~ ^[0-9]+$ ]]
+					then
+						echo "Error: column $col_name type is $col_type! You must enter a numeric value"	
+						valid_row=0
+					else 
+						
+						line+=":${values[$i]}"
+					fi # 9 if
+				elif [[ $col_type = "str" ]] # 8 if
+				then
+					if [[ -z ${values[$i]} ]] # 10 if
+					then
+						echo "Error: column $col_name type is $col_type! You should enter a non-empty string"
+						valid_row=0
+						
+					else 
+						line+=":${values[$i]}"
+						
+					fi # 10 if
+				fi # 9 if
+					
+			done
+			
+			if [[ $valid_row = 1 ]]
+			then
+				echo $line >> $table
+				echo "$line is inserted into the table" 
+			fi
+			line=""
+			
+		else	
+			echo "$table does not exist"
+		fi # 2 if
+	
+fi #1 if
+

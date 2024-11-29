@@ -1,0 +1,169 @@
+#!/usr/bin/bash
+
+PS3="This is the select menu, Choose [1-4]: "
+# Validate table name
+validate_table_name() {
+    local table="$1"
+    if [[ -z $table || $table =~ ^[[:space:]]*$ ]]; then
+        echo "Error: Table name must be a non-empty string."
+        return 1
+    elif [[ ! -f $table ]]; then
+        echo "Error: Table '$table' does not exist."
+        return 1
+    fi
+    return 0
+}
+
+# Validate column name
+validate_column_name() {
+    local table="$1"
+    local column="$2"
+    local meta_file=".meta$table"
+
+    if [[ ! -f $meta_file ]]; then
+        echo "Error: Metadata file for '$table' does not exist."
+        
+        return 1
+    fi
+
+    local column_number=$(awk -F: -v col="$column" '
+        BEGIN {col_num = -1}
+        {if ($1 == col) col_num = NR}
+        END {print col_num}' "$meta_file")
+
+    if [[ $column_number -eq -1 || -z $column_number ]]; then
+        echo "Error: Column '$column' not found in metadata."
+        return 1
+    fi
+
+    echo "$column_number"
+    return 0
+}
+
+# Print table headers and rows in formatted table
+print_table() {
+    local headers=("$@")
+    declare -a max_lengths=()
+
+    # Calculate column widths
+    for header in "${headers[@]}"; do
+        max_lengths+=(${#header})
+    done
+
+    # Print header
+    printf "%0.s-" {1..80}
+    echo
+    for ((i = 0; i < ${#headers[@]}; i++)); do
+        printf "%-*s  " "${max_lengths[i]}" "${headers[i]}"
+    done
+    echo
+    printf "%0.s-" {1..80}
+    echo
+}
+
+# Select all rows
+select_all() {
+    read -p "Enter the table name: " table
+    if ! validate_table_name "$table"; then
+     PS3="You are inside DB fr, Choose [1-8]"
+     return 1
+     fi
+
+    # Read the header and rows
+    IFS=":" read -r -a headers <<< "$(head -n 1 "$table")"
+    print_table "${headers[@]}"
+
+    tail -n +2 "$table" | while IFS=":" read -r -a row; do
+        for ((i = 0; i < ${#row[@]}; i++)); do
+            printf "%-*s  " "${#headers[i]}" "${row[i]}"
+        done
+        echo
+    done
+    printf "%0.s-" {1..80}
+    echo
+}
+
+# Select by column
+select_by_column() {
+    read -p "Enter the table name to select a column from: " table
+    if ! validate_table_name "$table"; then return 1; fi
+
+    read -p "Enter the column name to display: " column
+    column_number=$(validate_column_name "$table" "$column") || return 1
+
+    # Print column
+    echo "Column '$column' from table '$table':"
+    printf "%0.s-" {1..40}
+    echo
+    printf "%-20s\n" "$column"
+    printf "%0.s-" {1..40}
+    echo
+
+    cut -d: -f"$column_number" "$table" | while IFS= read -r value; do
+        printf "%-20s\n" "$value"
+    done
+    printf "%0.s-" {1..40}
+    echo
+}
+
+# Select by row
+select_by_row() {
+    read -p "Enter the table name to select a row from: " table
+    if ! validate_table_name "$table"; then return 1; fi
+
+    read -p "Enter the value to search for: " search_value
+    if [[ -z $search_value || $search_value =~ ^[[:space:]]*$ ]]; then
+        echo "Error: Search value must be a non-empty string."
+        PS3="You are inside DB fr, Choose [1-8]"
+        return 1
+    fi
+
+    rows=$(awk -v val="$search_value" -F: '$0 ~ val {print}' "$table")
+    if [[ -z $rows ]]; then
+        echo "No rows found containing the value '$search_value'."
+        PS3="You are inside DB fr, Choose [1-8]"
+        return 1
+    fi
+
+    IFS=":" read -r -a headers <<< "$(head -n 1 "$table")"
+    print_table "${headers[@]}"
+
+    while IFS=: read -r -a row; do
+        for ((i = 0; i < ${#row[@]}; i++)); do
+            printf "%-*s  " "${#headers[i]}" "${row[i]}"
+        done
+        echo
+    done <<< "$rows"
+    printf "%0.s-" {1..80}
+    echo
+}
+
+# Main menu
+select_menu() {
+    select option in "Select all" "Select by column" "Select by row" "Exit"; do
+        case $REPLY in
+        1) 
+        	select_all 
+        	;;
+        2) 
+        	select_by_column 
+        	;;
+        3) 
+        	select_by_row 
+        	;;
+        4) 
+        	echo "Exiting Select Menu"
+        	PS3="You are inside DB fr, Choose [1-8]"
+        	break 
+        	;;
+        *) 
+        	echo 
+        	"Not a valid option" 
+        	;;
+        esac
+    done
+}
+
+# Start menu
+select_menu
+
