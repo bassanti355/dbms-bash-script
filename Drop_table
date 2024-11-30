@@ -1,23 +1,37 @@
-#!/usr/bin/bash
-
-# Prompt for the table name
-read -p "Enter the name of the table you want to drop: " tname
-table=${tname,,}  # Convert to lowercase
-
-# Check if the table exists
-if [ -e "$HOME/DBMS/$dbName/$table" ]; then
-    # Confirm the action with the user
-    read -p "Are you sure you want to drop $table? yes/no: " answer
-    if [[ $answer =~ ^yes$ ]]; then
-        # Remove the table and its metadata file
-        rm "$HOME/DBMS/$dbName/$table" "$HOME/DBMS/$dbName/.meta$table"
-        echo "Table $table has been dropped. Don't come at me..."
-    elif [[ $answer =~ ^no$ ]]; then
-        echo "Great choice! Always think twice before dropping a table."
+#! /usr/bin/bash
+validate_str() {
+    if [[ "$1" =~ ^[a-zA-Z0-9_]+$ ]]; then
+        # String must only contain letters, numbers, or underscores
+        return 0 # Valid
     else
-        echo "Did not get that, try again."
+        return 1 # Invalid
     fi
-else
-    echo "Table does not exist."
-fi
+}
 
+# Ask the user for the table name to drop
+read -p "Enter the name of the table you want to drop: " tname
+	table=${tname,,}
+
+
+	    
+	    # Validate the table name
+	    if ! validate_str "$tname"; then
+		echo "Invalid name. table names must only contain letters, numbers, or underscores: $tname"
+	    else
+		table=${tname,,}  # Convert to lowercase for consistency
+		if [ -d "$table" ]; then
+		    # Confirm deletion with user
+		    read -p "Are you sure you want to drop $table? yes/no: " answer
+		    if [[ $answer =~ ^yes$ ]]; then
+		        rm -r "$table"
+		        echo "Table '$table' has been dropped."
+		    elif [[ $answer =~ ^no$ ]]; then
+		        echo "Great choice! Always think twice before dropping a table."
+		    else
+		        echo "Unrecognized input. Try again."
+		    fi
+		else
+		    echo "table '$table' does not exist."
+		fi
+	    fi
+	    ;;
