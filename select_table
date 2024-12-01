@@ -157,8 +157,7 @@ select_menu() {
         	break 
         	;;
         *) 
-        	echo 
-        	"Not a valid option" 
+        	echo "Not a valid option" 
         	;;
         esac
     done
