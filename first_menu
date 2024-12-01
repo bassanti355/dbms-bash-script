@@ -1,4 +1,4 @@
-#! /bin/bash 
+#! /usr/bin/bash 
 
 ##############################################
 # Functions for input validation
@@ -42,7 +42,7 @@ echo ------------------------Welcome `whoami`---------------------
 PS3="This is the main menu, Choose [1-5]: " 
 
 # 5- Main menu to choose operations on the database
-select option in "Create Database" "List Database" "Connect Database" "Drop Database" "Exit"
+select option in "Create Database" "List Database" "Connect To Database" "Drop Database" "Exit"
 do
     case $option in
 
@@ -57,7 +57,7 @@ do
     
     # 7- Validate the database name
     if ! validate_str "$dbName" ;then
-        echo "Invalid name, database name must not contain special characters, empty spaces, or numbers: $dbName" 
+        echo -e "Invalid name "$dname". Database names must only contain letters, numbers, or underscores." 
     elif [ -e "$dbName" ]; then
         # 8- Check if the database already exists
         echo "Database '$dbName' already exists."
@@ -87,7 +87,7 @@ do
 # Connect to a Database Section
 ##############################################
 
-"Connect Database")
+"Connect To Database")
     # 12- Ask the user for the database name to connect
     read -p "Enter the name of the database to connect: " dname
    dbName=${dname,,}
@@ -105,26 +105,29 @@ do
             1) 
                 # 15- Call external script for creating tables
                 . create_table
+                PS3="You are inside DB $dbName, Choose [1-8]: "
                 ;; 
             2)
                 # 16- Call external script for dropping tables
-                . Drop_table
+                . drop_table
                 ;;
             3)
                 # 17- Call external script for inserting data into tables
-                . insert_into
+                . insert_into_table
                 ;;
             4)
                 . select_table
-                
+                PS3="You are inside DB $dbName, Choose [1-8]: "
                 ;;
             5)
                 # 18- Call external script for deleting rows from tables
                 . delete_table
+                PS3="You are inside DB $dbName, Choose [1-8]: "
                 ;;
             6)
                 # 19- Call external script for updating rows in tables
                 . update_table
+                PS3="You are inside DB $dbName, Choose [1-8]: "
                 ;;
             7)
                 # 20- Call external script for listing tables
@@ -134,7 +137,7 @@ do
                 # 21- Disconnect from the database
                 echo "Disconnecting from database $dbName."
                 cd ..
-                PS3="Please choose an option from the menu: "
+		PS3="This is the main menu, Choose [1-5]: "
                 break
                 ;;
             *)
@@ -166,7 +169,7 @@ do
     
     # Validate the database name
     if ! validate_str "$dname"; then
-        echo "Invalid name. Database names must only contain letters, numbers, or underscores: $dname"
+        echo -e "Invalid name "$dname". Database names must only contain letters, numbers, or underscores "
     else
         dbName=${dname,,}  # Convert to lowercase for consistency
         if [ -e "$dbName" ]; then
@@ -178,7 +181,7 @@ do
             elif [[ $answer =~ ^no$ ]]; then
                 echo "Great choice! Always think twice before dropping a database."
             else
-                echo "Unrecognized input. Try again."
+                echo "Unrecognized input. Try answering with yes/no."
             fi
         else
             echo "Database '$dbName' does not exist."
@@ -207,4 +210,3 @@ do
     ;;
     esac
 done
-
